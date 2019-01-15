@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://d3js.org/d3-request.v1.min.js"></script>
+<body>
+<input type='file' />
+<script>
+
+var input = d3.select('input');
+
+input.on('change', function() {
+  var that = d3.select(this).node();
+  var file = that.files[0];
+  if (file === void 0) {return;}
+  var reader = new FileReader();
+
+  reader.addEventListener('load', function () {
+    d3.json('/api/nparray')
+      .header('Content-Type', 'application/json; charset=utf-8')
+      .post(JSON.stringify({data: reader.result}), function(err, res) {
+        console.log(err);
+        console.log(res);
+      });
+  }, false);
+
+  if (file) {
+    reader.readAsDataURL(file);
+  }
+});
+
+</script>
