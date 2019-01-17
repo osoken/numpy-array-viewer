@@ -27,7 +27,7 @@ class NPArrayEncoder(JSONEncoder):
         if isinstance(obj, np.ndarray):
             return {
                 'shape': obj.shape,
-                'tensor': obj.tolist()
+                'array': obj.tolist()
             }
         return json.JSONEncoder.default(self, obj)
 
