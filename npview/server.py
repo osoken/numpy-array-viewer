@@ -5,7 +5,7 @@ import sqlite3
 import re
 import base64
 import io
-import json
+from datetime import datetime
 
 from sqlite_tensor import Database, Tensor
 from flask import Flask, jsonify, request, abort
@@ -18,9 +18,10 @@ class NPArrayEncoder(JSONEncoder):
         if isinstance(obj, Tensor):
             return {
                 'id': obj.id,
-                'data': self.default(obj.data)
+                'data': self.default(obj.data),
+                'attr': self.default(obj.attr)
             }
-        if hasattr(obj, 'keys'):
+        if isinstance(obj, np.lib.npyio.NpzFile):
             return {
                 k: self.default(obj[k]) for k in obj.keys()
             }
@@ -29,7 +30,7 @@ class NPArrayEncoder(JSONEncoder):
                 'shape': obj.shape,
                 'array': obj.tolist()
             }
-        return json.JSONEncoder.default(self, obj)
+        return obj
 
 
 def gen_app(config_object=None):
@@ -56,20 +57,22 @@ def gen_app(config_object=None):
                 'result': list(db.keys())
             })
         elif request.method == 'POST':
-            data = request.get_json()
+            q = request.get_json()
             t = Tensor(
-                np.load(
+                data=np.load(
                     io.BytesIO(
                         base64.b64decode(
-                            re.sub('.*,', '', data['data'])
+                            re.sub('.*,', '', q['data'])
                         )
                     )
-                )
+                ),
+                attr=dict({
+                    k: v for k, v in q.items() if k not in ('data', 'id')
+                }, timestamp=datetime.utcnow().timestamp()),
+                id=(q['id'] if 'id' in q else None)
             )
             db.save(t)
-            return jsonify({
-                'id': t.id
-            })
+            return jsonify(t)
 
     @app.route('/api/nparray/<id_>', methods=['GET'])
     def api_nparray_id(id_):
